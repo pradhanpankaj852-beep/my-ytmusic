@@ -133,15 +133,37 @@ function initMediaSession() {
     } else if (ev.type === 'paused') {
       navigator.mediaSession.playbackState = 'paused';
     }
+
+    if (ev.type === 'timeupdate') {
+      if ('setPositionState' in navigator.mediaSession && ev.duration > 0) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: Math.max(ev.duration, 0.1),
+            playbackRate: 1,
+            position: Math.min(Math.max(ev.current, 0), ev.duration)
+          });
+        } catch (e) {}
+      }
+    }
   });
 
-  navigator.mediaSession.setActionHandler('play', () => Player.resume());
-  navigator.mediaSession.setActionHandler('pause', () => Player.pause());
-  navigator.mediaSession.setActionHandler('previoustrack', () => Player.prev());
-  navigator.mediaSession.setActionHandler('nexttrack', () => Player.next());
-  navigator.mediaSession.setActionHandler('seekto', (details) => {
-    if (details.seekTime) Player.seek(details.seekTime);
-  });
+  try {
+    navigator.mediaSession.setActionHandler('play', () => Player.resume());
+    navigator.mediaSession.setActionHandler('pause', () => Player.pause());
+    navigator.mediaSession.setActionHandler('previoustrack', () => Player.prev());
+    navigator.mediaSession.setActionHandler('nexttrack', () => Player.next());
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime !== undefined && details.seekTime !== null) Player.seek(details.seekTime);
+    });
+    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+      const cur = (Store.getPlayback().positionSec || 0) + (details.seekOffset || 10);
+      Player.seek(cur);
+    });
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+      const cur = Math.max(0, (Store.getPlayback().positionSec || 0) - (details.seekOffset || 10));
+      Player.seek(cur);
+    });
+  } catch (e) {}
 }
 
 // ── Keyboard Shortcuts ──

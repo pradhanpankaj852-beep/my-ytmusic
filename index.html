@@ -16,8 +16,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Hidden YouTube IFrame Player Host for background audio -->
-  <div id="yt-player-host" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;pointer-events:none;opacity:0;"></div>
+  <!-- Continuous Background Audio Host & Player -->
+  <div id="yt-player-host" style="position:fixed;bottom:0;right:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1;"></div>
+  <audio id="bg-audio-anchor" loop playsinline webkit-playsinline style="display:none;"></audio>
 
   <div class="app-layout">
     <!-- Desktop Side Rail / Navigation -->

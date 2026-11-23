@@ -3,7 +3,43 @@ import { Store } from './store.js';
 let ytPlayer = null;
 let isReady = false;
 let pendingVideoId = null;
+let userRequestedPause = false;
 const listeners = new Set();
+
+// Silent WAV audio loop anchor for iOS / Android background playback
+const SILENT_WAV_B64 = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+let anchorEl = null;
+
+function playAudioAnchor() {
+  try {
+    if (!anchorEl) {
+      anchorEl = document.getElementById('bg-audio-anchor') || new Audio(SILENT_WAV_B64);
+      anchorEl.src = SILENT_WAV_B64;
+      anchorEl.loop = true;
+      anchorEl.setAttribute('playsinline', '');
+      anchorEl.setAttribute('webkit-playsinline', '');
+    }
+    anchorEl.play().catch(() => {});
+  } catch (e) {}
+}
+
+function pauseAudioAnchor() {
+  if (anchorEl) anchorEl.pause();
+}
+
+// Background auto-resume & prevention of mobile lockscreen suspension
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (Player.isPlaying()) {
+      playAudioAnchor();
+    }
+  } else {
+    // When returning to foreground, ensure playback stays in sync
+    if (!userRequestedPause && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PAUSED) {
+      ytPlayer.playVideo();
+    }
+  }
+});
 
 export function onPlayerEvent(fn) {
   listeners.add(fn);
@@ -29,13 +65,14 @@ function createPlayer() {
   const container = document.getElementById('yt-player-host');
   if (!container) return;
   ytPlayer = new YT.Player('yt-player-host', {
-    height: '1',
-    width: '1',
+    height: '2',
+    width: '2',
     playerVars: {
       autoplay: 0,
       controls: 0,
       disablekb: 1,
       fs: 0,
+      playsinline: 1,
       modestbranding: 1,
       rel: 0,
       iv_load_policy: 3,
@@ -56,9 +93,18 @@ function createPlayer() {
       onStateChange: (e) => {
         const state = e.data;
         if (state === YT.PlayerState.PLAYING) {
+          userRequestedPause = false;
+          playAudioAnchor();
           emit('playing');
           startTimeUpdate();
         } else if (state === YT.PlayerState.PAUSED) {
+          // If mobile OS attempted to pause because screen locked or switched app, auto-resume!
+          if (document.hidden && !userRequestedPause) {
+            playAudioAnchor();
+            if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
+            return;
+          }
+          pauseAudioAnchor();
           emit('paused');
           stopTimeUpdate();
         } else if (state === YT.PlayerState.ENDED) {
@@ -128,6 +174,8 @@ export const Player = {
   },
 
   play(videoId, trackList) {
+    userRequestedPause = false;
+    playAudioAnchor();
     if (trackList && trackList.length > 0) {
       const ids = trackList.map(t => t.videoId || t);
       const idx = ids.indexOf(videoId);
@@ -150,17 +198,21 @@ export const Player = {
     if (!ytPlayer) return;
     const state = ytPlayer.getPlayerState();
     if (state === YT.PlayerState.PLAYING) {
-      ytPlayer.pauseVideo();
+      this.pause();
     } else {
-      ytPlayer.playVideo();
+      this.resume();
     }
   },
 
   pause() {
+    userRequestedPause = true;
+    pauseAudioAnchor();
     if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
   },
 
   resume() {
+    userRequestedPause = false;
+    playAudioAnchor();
     if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
   },
 
