@@ -124,7 +124,23 @@ export const Api = {
       const detailData = detailRes.ok ? await detailRes.json() : { items: [] };
       const detailsMap = {};
       for (const d of (detailData.items || [])) detailsMap[d.id] = d;
-      return data.items.map(i => mapYTItem(i, detailsMap[i.id?.videoId]));
+      const mapped = data.items.map(i => mapYTItem(i, detailsMap[i.id?.videoId]));
+
+      // Prioritize Clean Audio / Topic releases (these have 0 dialogue skits and minimal/no video ad pre-rolls)
+      mapped.sort((a, b) => {
+        const score = (t) => {
+          let s = 0;
+          const text = (t.title + ' ' + t.artist).toLowerCase();
+          if (text.includes('- topic')) s += 10;
+          if (text.includes('official audio') || text.includes('audio')) s += 6;
+          if (text.includes('lyrics') || text.includes('lyric')) s += 4;
+          if (text.includes('official music video') || text.includes('official video')) s -= 2;
+          return s;
+        };
+        return score(b) - score(a);
+      });
+
+      return mapped;
     } catch (err) {
       console.warn('YouTube API failed, trying fallback:', err.message);
       const fallbackResults = await this.searchPiped(query);

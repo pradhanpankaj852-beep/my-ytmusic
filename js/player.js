@@ -6,40 +6,83 @@ let pendingVideoId = null;
 let userRequestedPause = false;
 const listeners = new Set();
 
-// Silent WAV audio loop anchor for iOS / Android background playback
-const SILENT_WAV_B64 = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-let anchorEl = null;
+// ── 1. Page Visibility & Focus Spoofing ──
+// Prevents YouTube Iframe from detecting mobile screen lock / tab switch / minimize
+try {
+  Object.defineProperty(document, 'hidden', {
+    get: () => false,
+    configurable: true,
+  });
+  Object.defineProperty(document, 'visibilityState', {
+    get: () => 'visible',
+    configurable: true,
+  });
+  if ('webkitHidden' in document) {
+    Object.defineProperty(document, 'webkitHidden', {
+      get: () => false,
+      configurable: true,
+    });
+  }
+  if ('webkitVisibilityState' in document) {
+    Object.defineProperty(document, 'webkitVisibilityState', {
+      get: () => 'visible',
+      configurable: true,
+    });
+  }
+  Document.prototype.hasFocus = () => true;
 
-function playAudioAnchor() {
+  // Intercept and swallow visibilitychange and blur events during capture phase
+  // so YouTube's embedded script NEVER receives the pause trigger when user locks screen
+  const eventsToBlock = ['visibilitychange', 'webkitvisibilitychange', 'blur', 'pagehide'];
+  eventsToBlock.forEach(evt => {
+    window.addEventListener(evt, (e) => {
+      e.stopImmediatePropagation();
+    }, true);
+    document.addEventListener(evt, (e) => {
+      e.stopImmediatePropagation();
+    }, true);
+  });
+} catch (e) {
+  console.warn('Visibility spoofing failed:', e);
+}
+
+// ── 2. Background Audio Hardware Keeper (iOS Safari & Android Chrome) ──
+let bgAudioCtx = null;
+let bgCarrierOsc = null;
+
+export function unlockBackgroundAudio() {
   try {
-    if (!anchorEl) {
-      anchorEl = document.getElementById('bg-audio-anchor') || new Audio(SILENT_WAV_B64);
-      anchorEl.src = SILENT_WAV_B64;
-      anchorEl.loop = true;
-      anchorEl.setAttribute('playsinline', '');
-      anchorEl.setAttribute('webkit-playsinline', '');
+    // Tell iOS Safari this web app has the same audio session priority as Spotify / Apple Podcasts
+    if (navigator.audioSession) {
+      navigator.audioSession.type = 'playback';
     }
-    anchorEl.play().catch(() => {});
+
+    // Synthesize an inaudible 20Hz carrier wave to hold the mobile OS hardware audio session open
+    if (!bgAudioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        bgAudioCtx = new AudioContextClass();
+        bgCarrierOsc = bgAudioCtx.createOscillator();
+        const gainNode = bgAudioCtx.createGain();
+        bgCarrierOsc.type = 'sine';
+        bgCarrierOsc.frequency.setValueAtTime(20, bgAudioCtx.currentTime);
+        // Extremely low gain (0.0001) - inaudible to human ear, but recognized by OS as active audio
+        gainNode.gain.setValueAtTime(0.0001, bgAudioCtx.currentTime);
+        bgCarrierOsc.connect(gainNode);
+        gainNode.connect(bgAudioCtx.destination);
+        bgCarrierOsc.start();
+      }
+    }
+
+    if (bgAudioCtx && bgAudioCtx.state === 'suspended') {
+      bgAudioCtx.resume();
+    }
   } catch (e) {}
 }
 
-function pauseAudioAnchor() {
-  if (anchorEl) anchorEl.pause();
-}
-
-// Background auto-resume & prevention of mobile lockscreen suspension
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    if (Player.isPlaying()) {
-      playAudioAnchor();
-    }
-  } else {
-    // When returning to foreground, ensure playback stays in sync
-    if (!userRequestedPause && ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PAUSED) {
-      ytPlayer.playVideo();
-    }
-  }
-});
+// Attach gesture unlock on first and repeated interactions
+window.addEventListener('click', unlockBackgroundAudio, { passive: true });
+window.addEventListener('touchstart', unlockBackgroundAudio, { passive: true });
 
 export function onPlayerEvent(fn) {
   listeners.add(fn);
@@ -65,10 +108,11 @@ function createPlayer() {
   const container = document.getElementById('yt-player-host');
   if (!container) return;
   ytPlayer = new YT.Player('yt-player-host', {
-    height: '2',
-    width: '2',
+    height: '240',
+    width: '240',
+    host: 'https://www.youtube-nocookie.com',
     playerVars: {
-      autoplay: 0,
+      autoplay: 1,
       controls: 0,
       disablekb: 1,
       fs: 0,
@@ -76,6 +120,9 @@ function createPlayer() {
       modestbranding: 1,
       rel: 0,
       iv_load_policy: 3,
+      origin: window.location.origin,
+      widget_referrer: window.location.href,
+      enablejsapi: 1,
     },
     events: {
       onReady: () => {
@@ -94,17 +141,20 @@ function createPlayer() {
         const state = e.data;
         if (state === YT.PlayerState.PLAYING) {
           userRequestedPause = false;
-          playAudioAnchor();
+          unlockBackgroundAudio();
           emit('playing');
           startTimeUpdate();
         } else if (state === YT.PlayerState.PAUSED) {
-          // If mobile OS attempted to pause because screen locked or switched app, auto-resume!
-          if (document.hidden && !userRequestedPause) {
-            playAudioAnchor();
-            if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
+          // If paused by OS background lock and not requested by user, immediately resume
+          if (!userRequestedPause) {
+            unlockBackgroundAudio();
+            setTimeout(() => {
+              if (ytPlayer && ytPlayer.playVideo && !userRequestedPause) {
+                ytPlayer.playVideo();
+              }
+            }, 60);
             return;
           }
-          pauseAudioAnchor();
           emit('paused');
           stopTimeUpdate();
         } else if (state === YT.PlayerState.ENDED) {
@@ -175,7 +225,7 @@ export const Player = {
 
   play(videoId, trackList) {
     userRequestedPause = false;
-    playAudioAnchor();
+    unlockBackgroundAudio();
     if (trackList && trackList.length > 0) {
       const ids = trackList.map(t => t.videoId || t);
       const idx = ids.indexOf(videoId);
@@ -206,13 +256,12 @@ export const Player = {
 
   pause() {
     userRequestedPause = true;
-    pauseAudioAnchor();
     if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
   },
 
   resume() {
     userRequestedPause = false;
-    playAudioAnchor();
+    unlockBackgroundAudio();
     if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
   },
 
