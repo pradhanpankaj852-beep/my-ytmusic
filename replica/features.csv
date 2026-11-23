@@ -1,0 +1,38 @@
+feature,area,priority,original,clone,notes
+Trending / Quick Picks shelves on Home,home,must,yes,yes,Dynamic fetch + seed tracks for instant load
+Mood & genre chip filters on Home,home,must,yes,yes,Genre chips on Home trigger query & shelf reload
+Horizontal carousel shelves,home,must,yes,yes,Responsive CSS scroll-snap carousel grid
+Song / Album / Playlist cards,home,must,yes,yes,Shared hover-lift cards with play button overlay
+Search by keyword,search,must,yes,yes,Debounced 350ms search via YouTube Data / Piped API
+Category chip filters on Search results,search,must,yes,yes,All / Songs / Music Videos category chips
+Search result rows with play action,search,must,yes,yes,Tap row plays track and sets active queue
+Liked Songs list,library,must,yes,yes,Toggle heart in player or row; stored in localStorage
+Create / rename / delete playlist,library,must,yes,yes,Full CRUD in localStorage with modal dialog
+Add / remove tracks from playlist,library,must,yes,yes,Add action in player; remove action in library
+Playlist detail view with track list,library,must,yes,yes,Shows track count and direct play button
+Persistent bottom mini-player,player,must,yes,yes,Glassmorphic fixed bar with play/pause/prev/next/progress
+Expand mini-player to fullscreen,player,must,yes,yes,Chevron tap opens fullscreen view with Queue & Lyrics
+Play / pause / next / previous controls,player,must,yes,yes,Core transport controls integrated with YT IFrame
+Seek via progress bar,player,must,yes,yes,Clickable progress bar in mini-player & fullscreen
+Queue view with track list,player,must,yes,yes,Current track highlight and click-to-play from queue
+Shuffle & repeat toggles,player,must,yes,yes,Randomizes queue; repeat modes off/one/all
+Volume slider,player,must,yes,yes,Range slider and mute button with volume memory
+Lyrics display,player,should,yes,yes,Dedicated lyrics tab with fallback state
+Drag-to-reorder queue,player,should,yes,partial,Click-to-play & state reordering supported
+Loading skeleton screens,ux,should,yes,yes,Pulsing shimmer placeholders on Home and Search
+Responsive layout (desktop + mobile),ux,should,yes,yes,Desktop side-rail + mobile bottom-navigation
+Keyboard shortcuts (space=play/pause),ux,should,yes,yes,Space=play/pause, Left/Right=seek, M=mute, L=like
+Empty states with illustration & CTA,ux,should,yes,yes,Covered in Library, Search, and Queue
+Toast notifications,ux,should,yes,yes,Glassmorphic toasts for feedback (like, playlist, errors)
+Dark theme (default),ux,could,yes,yes,tokens.css passed WCAG AA contrast check
+Album art background gradient,player,could,yes,no,Deferred
+Search history / recent searches,search,could,yes,yes,Persisted in localStorage; clickable chips
+Audio visualizer / waveform,player,could,yes,no,Deferred
+Personalised recommendations (ML),home,skip,yes,no,Requires ML pipeline; trending used instead
+User authentication / Google sign-in,auth,skip,yes,no,Excluded per scope
+Subscription / billing,monetisation,skip,yes,no,Excluded per scope
+Offline downloads,premium,skip,yes,no,Premium feature; not applicable to web MVP
+Podcasts,content,skip,yes,no,Excluded per scope
+Social sharing / comments,social,skip,yes,no,Excluded per scope
+Chromecast / device casting,hardware,skip,yes,no,Hardware integration out of scope
+Explore / charts tab (separate screen),navigation,skip,yes,no,Merged into Home shelves
