@@ -479,8 +479,12 @@ async function executeSearch(query) {
     });
   } catch (err) {
     resultsContainer.innerHTML = `
-      <div style="text-align:center;padding:60px 20px;color:var(--color-danger);">
-        Error loading results. Please check your network or try again.
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:2rem;margin-bottom:12px;">⚠️</div>
+        <div style="font-size:var(--text-lg);font-weight:600;color:var(--color-text);margin-bottom:8px;">Search Request Issue</div>
+        <div style="color:var(--color-text-secondary);font-size:var(--text-base);max-width:460px;margin:0 auto;line-height:1.5;">
+          ${escapeHtml(err.message)}
+        </div>
       </div>
     `;
   }

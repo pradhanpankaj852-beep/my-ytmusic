@@ -70,7 +70,7 @@ export const Api = {
     for (let i = 0; i <= retries; i++) {
       try {
         const url = `${pipedBase()}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
         return (data.items || []).filter(i => i.type === 'stream').map(mapPipedItem);
@@ -101,15 +101,17 @@ export const Api = {
     if (!key) return this.searchPiped(query);
     try {
       const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=20&q=${encodeURIComponent(query)}&key=${key}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) {
-        console.warn('YouTube search API response not OK:', res.status);
-        throw new Error(res.status);
+        const errJson = await res.json().catch(() => ({}));
+        const msg = errJson.error?.message || `HTTP ${res.status}`;
+        console.error('YouTube Search API Error:', msg);
+        throw new Error(msg);
       }
       let data = await res.json();
       if (!data.items || data.items.length === 0) {
         const fallbackUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=${encodeURIComponent(query + ' audio')}&key=${key}`;
-        const fbRes = await fetch(fallbackUrl);
+        const fbRes = await fetch(fallbackUrl, { signal: AbortSignal.timeout(5000) });
         if (fbRes.ok) {
           const fbData = await fbRes.json();
           if (fbData.items && fbData.items.length > 0) data = fbData;
@@ -118,14 +120,16 @@ export const Api = {
       const ids = (data.items || []).map(i => i.id?.videoId).filter(Boolean).join(',');
       if (!ids) return [];
       const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${key}`;
-      const detailRes = await fetch(detailsUrl);
+      const detailRes = await fetch(detailsUrl, { signal: AbortSignal.timeout(5000) });
       const detailData = detailRes.ok ? await detailRes.json() : { items: [] };
       const detailsMap = {};
       for (const d of (detailData.items || [])) detailsMap[d.id] = d;
       return data.items.map(i => mapYTItem(i, detailsMap[i.id?.videoId]));
     } catch (err) {
-      console.warn('YouTube API failed, falling back to Piped:', err);
-      return this.searchPiped(query);
+      console.warn('YouTube API failed, trying fallback:', err.message);
+      const fallbackResults = await this.searchPiped(query);
+      if (fallbackResults && fallbackResults.length > 0) return fallbackResults;
+      throw err;
     }
   },
 
