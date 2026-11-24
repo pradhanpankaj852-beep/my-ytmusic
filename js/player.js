@@ -6,42 +6,25 @@ let pendingVideoId = null;
 let userRequestedPause = false;
 const listeners = new Set();
 
-// ── 1. Page Visibility & Focus Spoofing ──
-// Prevents YouTube Iframe from detecting mobile screen lock / tab switch / minimize
+// ── 1. Page Visibility Spoofing ──
+// Prevents YouTube Iframe from detecting mobile screen lock / tab switch
 try {
-  Object.defineProperty(document, 'hidden', {
-    get: () => false,
-    configurable: true,
-  });
-  Object.defineProperty(document, 'visibilityState', {
-    get: () => 'visible',
-    configurable: true,
-  });
-  if ('webkitHidden' in document) {
-    Object.defineProperty(document, 'webkitHidden', {
-      get: () => false,
-      configurable: true,
-    });
-  }
-  if ('webkitVisibilityState' in document) {
-    Object.defineProperty(document, 'webkitVisibilityState', {
-      get: () => 'visible',
-      configurable: true,
-    });
-  }
-  Document.prototype.hasFocus = () => true;
+  const spoofGetter = { get: () => false, configurable: true };
+  const spoofVisible = { get: () => 'visible', configurable: true };
 
-  // Intercept and swallow visibilitychange and blur events during capture phase
-  // so YouTube's embedded script NEVER receives the pause trigger when user locks screen
-  const eventsToBlock = ['visibilitychange', 'webkitvisibilitychange', 'blur', 'pagehide'];
-  eventsToBlock.forEach(evt => {
-    window.addEventListener(evt, (e) => {
-      e.stopImmediatePropagation();
-    }, true);
-    document.addEventListener(evt, (e) => {
-      e.stopImmediatePropagation();
-    }, true);
-  });
+  try { Object.defineProperty(document, 'hidden', spoofGetter); } catch (e) {}
+  try { Object.defineProperty(document, 'visibilityState', spoofVisible); } catch (e) {}
+  try { Object.defineProperty(document, 'webkitHidden', spoofGetter); } catch (e) {}
+  try { Object.defineProperty(document, 'webkitVisibilityState', spoofVisible); } catch (e) {}
+  try { Document.prototype.hasFocus = () => true; } catch (e) {}
+
+  // Stop visibilitychange events from pausing playback when screen turns off
+  window.addEventListener('visibilitychange', (e) => {
+    e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('visibilitychange', (e) => {
+    e.stopImmediatePropagation();
+  }, true);
 } catch (e) {
   console.warn('Visibility spoofing failed:', e);
 }

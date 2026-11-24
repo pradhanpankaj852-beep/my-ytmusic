@@ -890,8 +890,7 @@ function showSettingsModal() {
 }
 
 // ── App Bootstrapper ──
-document.addEventListener('DOMContentLoaded', () => {
-  // Initialize player engine & UI
+function bootstrap() {
   Player.init();
   initMiniPlayer();
   initRouter();
@@ -902,4 +901,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (settingsBtn) {
     settingsBtn.addEventListener('click', showSettingsModal);
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrap);
+} else {
+  bootstrap();
+}
