@@ -490,11 +490,14 @@ body {
   position: relative;
   max-width: 640px;
   margin-bottom: var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .search-input {
   width: 100%;
-  padding: 14px 20px 14px 50px;
+  padding: 14px 44px 14px 48px;
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -504,6 +507,27 @@ body {
   font-family: var(--font-family);
   outline: none;
   transition: all var(--duration-fast) var(--ease-out);
+}
+
+.search-submit-btn {
+  padding: 12px 22px;
+  background: linear-gradient(135deg, #3478c6, #6e9eff);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: var(--text-base);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(52, 120, 198, 0.3);
+}
+
+.search-submit-btn:active {
+  transform: scale(0.95);
 }
 
 .search-input:focus {

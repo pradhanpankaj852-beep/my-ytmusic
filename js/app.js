@@ -333,11 +333,14 @@ function renderSearchScreen() {
   const history = Store.getSearchHistory();
 
   container.innerHTML = `
-    <div class="search-bar-wrap">
-      <span class="search-icon-pos">${ICONS.search}</span>
-      <input type="search" class="search-input" id="search-input-field" placeholder="Search songs, artists, albums..." value="${lastSearchQuery}" autofocus>
-      <button class="search-clear-btn" id="search-clear-btn" style="${lastSearchQuery ? 'display:flex;' : 'display:none;'}">${ICONS.x}</button>
-    </div>
+    <form id="search-form" class="search-bar-wrap" action="javascript:void(0);">
+      <div style="position:relative;flex:1;">
+        <span class="search-icon-pos">${ICONS.search}</span>
+        <input type="search" class="search-input" id="search-input-field" placeholder="Search songs, artists, albums..." value="${escapeHtml(lastSearchQuery)}" enterkeyhint="search" autocomplete="off" spellcheck="false" autofocus>
+        <button type="button" class="search-clear-btn" id="search-clear-btn" style="${lastSearchQuery ? 'display:flex;' : 'display:none;'}">${ICONS.x}</button>
+      </div>
+      <button type="submit" class="search-submit-btn focus-ring">Search</button>
+    </form>
 
     <!-- Category Filters -->
     <div class="chips-container" id="search-chips">
@@ -351,7 +354,7 @@ function renderSearchScreen() {
       <h3 style="font-size:var(--text-md);color:var(--color-text-secondary);margin-bottom:12px;">Recent Searches</h3>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
         ${history.map(q => `
-          <button class="chip search-history-chip" data-query="${q}">${q}</button>
+          <button class="chip search-history-chip" data-query="${escapeHtml(q)}">${escapeHtml(q)}</button>
         `).join('')}
       </div>
     </div>
@@ -362,16 +365,21 @@ function renderSearchScreen() {
     </div>
   `;
 
+  const form = document.getElementById('search-form');
   const input = document.getElementById('search-input-field');
   const clearBtn = document.getElementById('search-clear-btn');
 
+  // Keystrokes ONLY toggle clear button to avoid exhausting daily API quota
   input.addEventListener('input', (e) => {
     const val = e.target.value;
     clearBtn.style.display = val ? 'flex' : 'none';
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      executeSearch(val);
-    }, 350);
+  });
+
+  // Searches run only when submitted (Enter key / Search button tap)
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = input.value.trim();
+    if (val) executeSearch(val);
   });
 
   clearBtn.addEventListener('click', () => {
@@ -439,9 +447,23 @@ async function executeSearch(query) {
   }
 
   if (historySec) historySec.style.display = 'none';
-  resultsContainer.innerHTML = renderListRowSkeletons(6);
   lastSearchQuery = trimmed;
   Store.addSearchQuery(trimmed);
+
+  // Check cache first to save API quota
+  const cacheKey = 'ytm_sq_' + trimmed.toLowerCase();
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed && parsed.length > 0) {
+        renderSearchResults(parsed, trimmed, resultsContainer);
+        return;
+      }
+    } catch (e) {}
+  }
+
+  resultsContainer.innerHTML = renderListRowSkeletons(6);
 
   try {
     const results = await Api.search(trimmed);
@@ -455,61 +477,101 @@ async function executeSearch(query) {
       return;
     }
 
+    // Save to cache
+    try { sessionStorage.setItem(cacheKey, JSON.stringify(results)); } catch (e) {}
     Store.cacheTracks(results);
-
-    resultsContainer.innerHTML = results.map(t => {
-      const safeId = escapeHtml(t.videoId);
-      const safeTitle = escapeHtml(t.title);
-      const safeArtist = escapeHtml(t.artist);
-      const safeThumb = escapeHtml(t.thumbnail);
-      const isLiked = Store.isLiked(t.videoId);
-
-      return `
-        <div class="list-row" data-video-id="${safeId}">
-          <img class="list-row-thumb" src="${safeThumb}" alt="${safeTitle}" loading="lazy">
-          <div class="list-row-info">
-            <div class="list-row-title">${safeTitle}</div>
-            <div class="list-row-artist">${safeArtist} ${t.duration ? '· ' + formatDuration(t.duration) : ''}</div>
+    renderSearchResults(results, trimmed, resultsContainer);
+  } catch (err) {
+    const isQuota = (err.message || '').toLowerCase().includes('quota');
+    if (isQuota) {
+      resultsContainer.innerHTML = `
+        <div style="text-align:center;padding:32px 16px;max-width:480px;margin:20px auto;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:24px;">
+          <div style="font-size:2.5rem;margin-bottom:12px;">⏳</div>
+          <div style="font-size:var(--text-lg);font-weight:700;color:var(--color-text);margin-bottom:8px;">Daily Search Quota Reached</div>
+          <div style="color:var(--color-text-secondary);font-size:var(--text-sm);line-height:1.6;margin-bottom:20px;">
+            Google limits free YouTube searches to 100 queries/day per project. This quota resets automatically at midnight.
+            <br><br>
+            To continue searching immediately, paste a fresh free Google API key below:
           </div>
-          <div class="list-row-actions">
-            <button class="row-like-btn focus-ring" data-video-id="${safeId}" aria-label="Like" style="background:none;border:none;color:${isLiked ? 'var(--color-danger)' : 'var(--color-text-secondary)'};cursor:pointer;padding:8px;display:flex;">
-              ${isLiked ? ICONS.heartFilled : ICONS.heart}
-            </button>
+          <div style="display:flex;gap:8px;max-width:380px;margin:0 auto 12px auto;">
+            <input type="text" id="quota-key-input" class="search-input" placeholder="Paste AIzaSy... key" style="padding:10px 14px;font-size:var(--text-sm);">
+            <button id="quota-key-save-btn" class="search-submit-btn" style="padding:10px 18px;font-size:var(--text-sm);">Save</button>
+          </div>
+          <div style="font-size:var(--text-xs);color:var(--color-text-muted);">
+            Your songs in Library and cached searches continue to play without limit!
           </div>
         </div>
       `;
-    }).join('');
+      const qInput = document.getElementById('quota-key-input');
+      const qBtn = document.getElementById('quota-key-save-btn');
+      if (qBtn && qInput) {
+        qBtn.addEventListener('click', () => {
+          const val = qInput.value.trim();
+          if (val) {
+            Api.setApiKey(val);
+            showToast('New API Key saved!');
+            executeSearch(trimmed);
+          }
+        });
+      }
+    } else {
+      resultsContainer.innerHTML = `
+        <div style="text-align:center;padding:40px 20px;">
+          <div style="font-size:2rem;margin-bottom:12px;">⚠️</div>
+          <div style="font-size:var(--text-lg);font-weight:600;color:var(--color-text);margin-bottom:8px;">Search Request Issue</div>
+          <div style="color:var(--color-text-secondary);font-size:var(--text-base);max-width:460px;margin:0 auto;line-height:1.5;">
+            ${escapeHtml(err.message)}
+          </div>
+        </div>
+      `;
+    }
+  }
+}
 
-    resultsContainer.querySelectorAll('.list-row').forEach(row => {
-      row.addEventListener('click', (e) => {
-        if (e.target.closest('.row-like-btn')) return;
-        const vid = row.dataset.videoId;
-        Player.play(vid, results);
-        showToast('Playing track...');
-      });
-    });
+function renderSearchResults(results, query, container) {
+  container.innerHTML = results.map(t => {
+    const safeId = escapeHtml(t.videoId);
+    const safeTitle = escapeHtml(t.title);
+    const safeArtist = escapeHtml(t.artist);
+    const safeThumb = escapeHtml(t.thumbnail);
+    const isLiked = Store.isLiked(t.videoId);
 
-    resultsContainer.querySelectorAll('.row-like-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const vid = btn.dataset.videoId;
-        const liked = Store.toggleLike(vid);
-        btn.innerHTML = liked ? ICONS.heartFilled : ICONS.heart;
-        btn.style.color = liked ? 'var(--color-danger)' : 'var(--color-text-secondary)';
-        showToast(liked ? 'Added to Liked Songs' : 'Removed from Liked Songs');
-      });
-    });
-  } catch (err) {
-    resultsContainer.innerHTML = `
-      <div style="text-align:center;padding:40px 20px;">
-        <div style="font-size:2rem;margin-bottom:12px;">⚠️</div>
-        <div style="font-size:var(--text-lg);font-weight:600;color:var(--color-text);margin-bottom:8px;">Search Request Issue</div>
-        <div style="color:var(--color-text-secondary);font-size:var(--text-base);max-width:460px;margin:0 auto;line-height:1.5;">
-          ${escapeHtml(err.message)}
+    return `
+      <div class="list-row" data-video-id="${safeId}">
+        <img class="list-row-thumb" src="${safeThumb}" alt="${safeTitle}" loading="lazy">
+        <div class="list-row-info">
+          <div class="list-row-title">${safeTitle}</div>
+          <div class="list-row-artist">${safeArtist} ${t.duration ? '· ' + formatDuration(t.duration) : ''}</div>
+        </div>
+        <div class="list-row-actions">
+          <button class="row-like-btn focus-ring" data-video-id="${safeId}" aria-label="Like" style="background:none;border:none;color:${isLiked ? 'var(--color-danger)' : 'var(--color-text-secondary)'};cursor:pointer;padding:8px;display:flex;">
+            ${isLiked ? ICONS.heartFilled : ICONS.heart}
+          </button>
         </div>
       </div>
     `;
-  }
+  }).join('');
+
+  container.querySelectorAll('.list-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.row-like-btn')) return;
+      const vid = row.dataset.videoId;
+      Player.play(vid, results);
+      showToast('Playing track...');
+    });
+  });
+
+  container.querySelectorAll('.row-like-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const vid = btn.dataset.videoId;
+      const liked = Store.toggleLike(vid);
+      btn.innerHTML = liked ? ICONS.heartFilled : ICONS.heart;
+      btn.style.color = liked ? 'var(--color-danger)' : 'var(--color-text-secondary)';
+      showToast(liked ? 'Added to Liked Songs' : 'Removed from Liked Songs');
+    });
+  });
+}
 }
 
 // ── S03 Library Screen ──
