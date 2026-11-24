@@ -1,3 +1,5 @@
+import { decodeHtml } from './utils/sanitize.js';
+
 const PIPED_INSTANCES = [
   'https://pipedapi.kavin.rocks',
   'https://pipedapi.adminforge.de',
@@ -40,8 +42,8 @@ function mapYTItem(item, details) {
   }
   return {
     videoId: id,
-    title: snippet.title || 'Untitled',
-    artist: snippet.channelTitle || 'Unknown Artist',
+    title: decodeHtml(snippet.title || 'Untitled'),
+    artist: decodeHtml(snippet.channelTitle || 'Unknown Artist'),
     thumbnail: snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url || `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
     duration,
   };

@@ -2,9 +2,9 @@ import ICONS from './icons.js';
 import { Store } from './store.js';
 import { Api } from './api.js';
 import { Player, onPlayerEvent } from './player.js';
-import { initMiniPlayer } from './ui/mini-player.js';
+import { initMiniPlayer, showAddToPlaylistModal } from './ui/mini-player.js';
 import { showToast } from './ui/toast.js';
-import { escapeHtml, maskApiKey } from './utils/sanitize.js';
+import { escapeHtml, decodeHtml, maskApiKey } from './utils/sanitize.js';
 
 // Seed tracks for instant playback & offline demo resilience
 const SEED_TRACKS = [
@@ -77,9 +77,87 @@ const SEED_TRACKS = [
 // Initialize cache with seed tracks
 Store.cacheTracks(SEED_TRACKS);
 
+// Curated Mood & Activity Catalogs (YouTube Music Algorithmic Recommendations)
+const MOOD_CATALOGS = {
+  'Podcasts': [
+    { videoId: 'B-k_A-v2k4w', title: 'The Joe Rogan Experience #2150', artist: 'Joe Rogan', plays: '12M plays', thumbnail: 'https://i.ytimg.com/vi/B-k_A-v2k4w/mqdefault.jpg', duration: 7200 },
+    { videoId: 'gXDMoiEkyuQ', title: 'How to Optimize Your Brain & Focus', artist: 'Huberman Lab', plays: '4.5M plays', thumbnail: 'https://i.ytimg.com/vi/gXDMoiEkyuQ/mqdefault.jpg', duration: 5400 },
+    { videoId: 'p3mZ9Qe1m08', title: 'Song Exploder: Behind The Hits', artist: 'Song Exploder', plays: '890K plays', thumbnail: 'https://i.ytimg.com/vi/p3mZ9Qe1m08/mqdefault.jpg', duration: 1800 },
+    { videoId: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio - 24/7 Chill Beats', artist: 'Lofi Girl', plays: 'Live', thumbnail: 'https://i.ytimg.com/vi/jfKfPfyJRdk/mqdefault.jpg', duration: 3600 },
+    { videoId: '7NOSDKb0HlU', title: 'Synthwave Radio - Chill Retro Beats', artist: 'Lofi Girl', plays: 'Live', thumbnail: 'https://i.ytimg.com/vi/7NOSDKb0HlU/mqdefault.jpg', duration: 3600 },
+    { videoId: 'k3Vduy9t4mU', title: 'Acoustic Guitar Sessions', artist: 'Cozy Rain', plays: '2.1M plays', thumbnail: 'https://i.ytimg.com/vi/k3Vduy9t4mU/mqdefault.jpg', duration: 1800 }
+  ],
+  'Romance': [
+    { videoId: '2Vv-BfVoq4g', title: 'Perfect', artist: 'Ed Sheeran', plays: '360 crore plays', thumbnail: 'https://i.ytimg.com/vi/2Vv-BfVoq4g/mqdefault.jpg', duration: 263 },
+    { videoId: '-BjZmE2gtdo', title: 'Lover', artist: 'Taylor Swift', plays: '240 crore plays', thumbnail: 'https://i.ytimg.com/vi/-BjZmE2gtdo/mqdefault.jpg', duration: 238 },
+    { videoId: 'GxldQ9GyXfY', title: 'Until I Found You', artist: 'Stephen Sanchez', plays: '180 crore plays', thumbnail: 'https://i.ytimg.com/vi/GxldQ9GyXfY/mqdefault.jpg', duration: 177 },
+    { videoId: '450p7goxZqg', title: 'All of Me', artist: 'John Legend', plays: '230 crore plays', thumbnail: 'https://i.ytimg.com/vi/450p7goxZqg/mqdefault.jpg', duration: 269 },
+    { videoId: '0yW7w8F2TVA', title: 'Say You Won\'t Let Go', artist: 'James Arthur', plays: '170 crore plays', thumbnail: 'https://i.ytimg.com/vi/0yW7w8F2TVA/mqdefault.jpg', duration: 211 },
+    { videoId: 'gset79KMmt0', title: 'Snowman', artist: 'Sia', plays: '113 crore plays', thumbnail: 'https://i.ytimg.com/vi/gset79KMmt0/mqdefault.jpg', duration: 165 }
+  ],
+  'Feel good': [
+    { videoId: 'ZbZSe6N_BXs', title: 'Happy', artist: 'Pharrell Williams', plays: '120 crore plays', thumbnail: 'https://i.ytimg.com/vi/ZbZSe6N_BXs/mqdefault.jpg', duration: 233 },
+    { videoId: 'ru0K8uYEZWw', title: 'Can\'t Stop the Feeling!', artist: 'Justin Timberlake', plays: '170 crore plays', thumbnail: 'https://i.ytimg.com/vi/ru0K8uYEZWw/mqdefault.jpg', duration: 236 },
+    { videoId: 'SmbmeOgWsqE', title: 'Good as Hell', artist: 'Lizzo', plays: '95 crore plays', thumbnail: 'https://i.ytimg.com/vi/SmbmeOgWsqE/mqdefault.jpg', duration: 159 },
+    { videoId: '09R8_2nJtjg', title: 'Sugar', artist: 'Maroon 5', plays: '400 crore plays', thumbnail: 'https://i.ytimg.com/vi/09R8_2nJtjg/mqdefault.jpg', duration: 235 },
+    { videoId: 'ApXoWvfEYVU', title: 'Sunflower', artist: 'Post Malone & Swae Lee', plays: '210 crore plays', thumbnail: 'https://i.ytimg.com/vi/ApXoWvfEYVU/mqdefault.jpg', duration: 158 },
+    { videoId: 'OPf0YbXqDm0', title: 'Uptown Funk', artist: 'Mark Ronson ft. Bruno Mars', plays: '520 crore plays', thumbnail: 'https://i.ytimg.com/vi/OPf0YbXqDm0/mqdefault.jpg', duration: 270 }
+  ],
+  'Relax': [
+    { videoId: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio - Beats to Relax', artist: 'Lofi Girl', plays: 'Live 24/7', thumbnail: 'https://i.ytimg.com/vi/jfKfPfyJRdk/mqdefault.jpg', duration: 3600 },
+    { videoId: 'k3Vduy9t4mU', title: 'Acoustic Guitar Melodies', artist: 'Cozy Rain', plays: 'Chill Vibe', thumbnail: 'https://i.ytimg.com/vi/k3Vduy9t4mU/mqdefault.jpg', duration: 1800 },
+    { videoId: '7NOSDKb0HlU', title: 'Synthwave Radio - Chill Synth Beats', artist: 'Lofi Girl', plays: 'Retro Wave', thumbnail: 'https://i.ytimg.com/vi/7NOSDKb0HlU/mqdefault.jpg', duration: 3600 },
+    { videoId: 'hT_nvWreIhg', title: 'Counting Stars', artist: 'OneRepublic', plays: '576 crore plays', thumbnail: 'https://i.ytimg.com/vi/hT_nvWreIhg/mqdefault.jpg', duration: 257 },
+    { videoId: 'gset79KMmt0', title: 'Snowman', artist: 'Sia', plays: '113 crore plays', thumbnail: 'https://i.ytimg.com/vi/gset79KMmt0/mqdefault.jpg', duration: 165 },
+    { videoId: '4NRXx6U8ABQ', title: 'Blinding Lights (Acoustic)', artist: 'The Weeknd', plays: '420 crore plays', thumbnail: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/mqdefault.jpg', duration: 200 }
+  ],
+  'Party': [
+    { videoId: 'GxBSyx85FW8', title: 'Yeah!', artist: 'Usher ft. Lil Jon, Ludacris', plays: '980M plays', thumbnail: 'https://i.ytimg.com/vi/GxBSyx85FW8/mqdefault.jpg', duration: 250 },
+    { videoId: 'UqyT8IEBkvY', title: '24K Magic', artist: 'Bruno Mars', plays: '160 crore plays', thumbnail: 'https://i.ytimg.com/vi/UqyT8IEBkvY/mqdefault.jpg', duration: 226 },
+    { videoId: 'TUVcZfQe-Kw', title: 'Levitating', artist: 'Dua Lipa', plays: '890M plays', thumbnail: 'https://i.ytimg.com/vi/TUVcZfQe-Kw/mqdefault.jpg', duration: 203 },
+    { videoId: 'yd8jh9QYfEs', title: 'Don\'t Stop the Music', artist: 'Rihanna', plays: '720M plays', thumbnail: 'https://i.ytimg.com/vi/yd8jh9QYfEs/mqdefault.jpg', duration: 236 },
+    { videoId: '7zp1TbLFPp8', title: 'Danza Kuduro', artist: 'Don Omar', plays: '140 crore plays', thumbnail: 'https://i.ytimg.com/vi/7zp1TbLFPp8/mqdefault.jpg', duration: 205 },
+    { videoId: 'HMUDVMiITOU', title: 'Turn Down for What', artist: 'DJ Snake & Lil Jon', plays: '110 crore plays', thumbnail: 'https://i.ytimg.com/vi/HMUDVMiITOU/mqdefault.jpg', duration: 213 }
+  ],
+  'Energy': [
+    { videoId: '7wtfhZwyrcc', title: 'Believer', artist: 'Imagine Dragons', plays: '270 crore plays', thumbnail: 'https://i.ytimg.com/vi/7wtfhZwyrcc/mqdefault.jpg', duration: 204 },
+    { videoId: '5gl9AUKS8IQ', title: 'The Phoenix', artist: 'Fall Out Boy', plays: '140M plays', thumbnail: 'https://i.ytimg.com/vi/5gl9AUKS8IQ/mqdefault.jpg', duration: 245 },
+    { videoId: 'IPXIgEAGe4U', title: 'High Hopes', artist: 'Panic! At The Disco', plays: '850M plays', thumbnail: 'https://i.ytimg.com/vi/IPXIgEAGe4U/mqdefault.jpg', duration: 191 },
+    { videoId: '2zNSgSzhBf8', title: 'Can\'t Hold Us', artist: 'Macklemore & Ryan Lewis', plays: '110 crore plays', thumbnail: 'https://i.ytimg.com/vi/2zNSgSzhBf8/mqdefault.jpg', duration: 258 },
+    { videoId: '_ovdm2yX4MA', title: 'Levels', artist: 'Avicii', plays: '640M plays', thumbnail: 'https://i.ytimg.com/vi/_ovdm2yX4MA/mqdefault.jpg', duration: 200 },
+    { videoId: 'ktvTqknDobU', title: 'Radioactive', artist: 'Imagine Dragons', plays: '150 crore plays', thumbnail: 'https://i.ytimg.com/vi/ktvTqknDobU/mqdefault.jpg', duration: 187 }
+  ],
+  'Workout': [
+    { videoId: '_Yhyp-_hX2s', title: 'Lose Yourself', artist: 'Eminem', plays: '190 crore plays', thumbnail: 'https://i.ytimg.com/vi/_Yhyp-_hX2s/mqdefault.jpg', duration: 326 },
+    { videoId: 'jnslmZ66Jm8', title: '\'Till I Collapse', artist: 'Eminem ft. Nate Dogg', plays: '120 crore plays', thumbnail: 'https://i.ytimg.com/vi/jnslmZ66Jm8/mqdefault.jpg', duration: 298 },
+    { videoId: 'btPJPFnesV4', title: 'Eye of the Tiger', artist: 'Survivor', plays: '110 crore plays', thumbnail: 'https://i.ytimg.com/vi/btPJPFnesV4/mqdefault.jpg', duration: 244 },
+    { videoId: 'PsO6Zn4V00M', title: 'Stronger', artist: 'Kanye West', plays: '550M plays', thumbnail: 'https://i.ytimg.com/vi/PsO6Zn4V00M/mqdefault.jpg', duration: 312 },
+    { videoId: 'VDvr08sCPOc', title: 'Remember The Name', artist: 'Fort Minor', plays: '350M plays', thumbnail: 'https://i.ytimg.com/vi/VDvr08sCPOc/mqdefault.jpg', duration: 230 },
+    { videoId: 'L53gjP-Tt2w', title: 'Power', artist: 'Kanye West', plays: '480M plays', thumbnail: 'https://i.ytimg.com/vi/L53gjP-Tt2w/mqdefault.jpg', duration: 292 }
+  ],
+  'Focus': [
+    { videoId: 'jfKfPfyJRdk', title: 'Deep Focus - Study Beats', artist: 'Lofi Girl', plays: 'Study Stream', thumbnail: 'https://i.ytimg.com/vi/jfKfPfyJRdk/mqdefault.jpg', duration: 3600 },
+    { videoId: '7NOSDKb0HlU', title: 'Synthwave Radio - Ambient Coding', artist: 'Lofi Girl', plays: 'Deep Work', thumbnail: 'https://i.ytimg.com/vi/7NOSDKb0HlU/mqdefault.jpg', duration: 3600 },
+    { videoId: '4NRXx6U8ABQ', title: 'Blinding Lights', artist: 'The Weeknd', plays: '420 crore plays', thumbnail: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/mqdefault.jpg', duration: 200 },
+    { videoId: 'k3Vduy9t4mU', title: 'Acoustic Focus Melodies', artist: 'Cozy Rain', plays: 'Relax & Think', thumbnail: 'https://i.ytimg.com/vi/k3Vduy9t4mU/mqdefault.jpg', duration: 1800 },
+    { videoId: 'S9bCLPwzSC0', title: 'Mockingbird', artist: 'Eminem', plays: '890 crore plays', thumbnail: 'https://i.ytimg.com/vi/S9bCLPwzSC0/mqdefault.jpg', duration: 251 },
+    { videoId: '34Na4j8AVgA', title: 'Starboy', artist: 'The Weeknd ft. Daft Punk', plays: '280 crore plays', thumbnail: 'https://i.ytimg.com/vi/34Na4j8AVgA/mqdefault.jpg', duration: 230 }
+  ]
+};
+
+// Cache all mood catalogs in the store
+Object.values(MOOD_CATALOGS).forEach(list => Store.cacheTracks(list));
+
+function getTracksForCurrentMood() {
+  if (MOOD_CATALOGS[homeGenreFilter]) {
+    return MOOD_CATALOGS[homeGenreFilter];
+  }
+  return SEED_TRACKS;
+}
+
 // Global App State
 let currentRoute = 'home';
-let homeGenreFilter = 'All';
+let homeGenreFilter = 'Romance';
 let searchCategoryFilter = 'All';
 let activeLibraryTab = 'liked';
 
@@ -230,8 +308,9 @@ function renderHomeScreen() {
   const container = document.getElementById('screen-home');
   if (!container) return;
 
-  const mixesTracks = SEED_TRACKS.slice(0, 4);
-  const speedDialTracks = SEED_TRACKS.slice(0, 6);
+  const currentMoodTracks = getTracksForCurrentMood();
+  const mixesTracks = currentMoodTracks.slice(0, 4);
+  const speedDialTracks = currentMoodTracks.slice(0, 6);
 
   container.innerHTML = `
     <!-- Mood / Genre Filter Chips -->
@@ -246,20 +325,20 @@ function renderHomeScreen() {
     <!-- Section 1: Song mixes (YouTube Music Mobile Style) -->
     <section class="shelf-section" style="margin-bottom:28px;">
       <div class="shelf-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h2 class="shelf-title" style="font-size:20px;font-weight:700;color:#fff;">Song mixes</h2>
+        <h2 class="shelf-title" style="font-size:20px;font-weight:700;color:#fff;">${homeGenreFilter} mixes</h2>
         <button class="chip" id="btn-play-all-mixes" style="padding:6px 14px;font-size:12px;background:rgba(255,255,255,0.1);color:#fff;border-radius:9999px;border:1px solid rgba(255,255,255,0.12);cursor:pointer;">Play all</button>
       </div>
       <div class="mixes-list" id="song-mixes-list" style="display:flex;flex-direction:column;gap:8px;">
         ${mixesTracks.map(t => `
           <div class="list-row song-mix-row" data-video-id="${escapeHtml(t.videoId)}" style="display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,0.02);cursor:pointer;transition:background 0.2s ease;">
-            <img src="${escapeHtml(t.thumbnail)}" alt="${escapeHtml(t.title)}" style="width:50px;height:50px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+            <img src="${escapeHtml(t.thumbnail)}" alt="${escapeHtml(decodeHtml(t.title))}" style="width:50px;height:50px;border-radius:8px;object-fit:cover;flex-shrink:0;">
             <div style="flex:1;min-width:0;">
-              <div style="font-size:15px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(t.title)}</div>
+              <div style="font-size:15px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(decodeHtml(t.title))}</div>
               <div style="font-size:13px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">
-                <span class="verified-badge">✓</span>${escapeHtml(t.artist)} · ${t.plays || formatDuration(t.duration)}
+                <span class="verified-badge">✓</span>${escapeHtml(decodeHtml(t.artist))} · ${t.plays || formatDuration(t.duration)}
               </div>
             </div>
-            <button class="focus-ring hover-brighten" aria-label="More options" style="background:none;border:none;color:#aaa;cursor:pointer;padding:8px;font-size:18px;">⋮</button>
+            <button class="btn-song-more focus-ring hover-brighten" data-video-id="${escapeHtml(t.videoId)}" aria-label="Add to playlist" style="background:none;border:none;color:#aaa;cursor:pointer;padding:8px;font-size:18px;">⋮</button>
           </div>
         `).join('')}
       </div>
@@ -270,12 +349,12 @@ function renderHomeScreen() {
       <div class="shelf-header" style="margin-bottom:12px;">
         <h2 class="shelf-title" style="font-size:20px;font-weight:700;color:#fff;">Speed dial</h2>
       </div>
-      <div class="speed-dial-grid">
+      <div class="speed-dial-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px;">
         ${speedDialTracks.map(t => `
-          <div class="speed-dial-card" data-video-id="${escapeHtml(t.videoId)}">
-            <img class="speed-dial-img" src="${escapeHtml(t.thumbnail)}" alt="${escapeHtml(t.title)}" loading="lazy">
-            <div class="speed-dial-overlay">
-              <span class="speed-dial-title">${escapeHtml(t.title)}</span>
+          <div class="speed-dial-card" data-video-id="${escapeHtml(t.videoId)}" style="position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);">
+            <img class="speed-dial-img" src="${escapeHtml(t.thumbnail)}" alt="${escapeHtml(decodeHtml(t.title))}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
+            <div class="speed-dial-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.85) 100%);display:flex;align-items:flex-end;padding:6px 8px;">
+              <span class="speed-dial-title" style="color:#ffffff;font-size:11px;font-weight:600;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(decodeHtml(t.title))}</span>
             </div>
           </div>
         `).join('')}
@@ -307,16 +386,25 @@ function renderHomeScreen() {
   if (playAllBtn) {
     playAllBtn.addEventListener('click', () => {
       Player.play(mixesTracks[0].videoId, mixesTracks);
-      showToast('Playing Song Mixes...');
+      showToast(`Playing ${homeGenreFilter} Mixes...`);
     });
   }
 
   // Attach mix row click events
   container.querySelectorAll('.song-mix-row').forEach(row => {
-    row.addEventListener('click', () => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-song-more')) return;
       const vid = row.dataset.videoId;
       Player.play(vid, mixesTracks);
       showToast('Playing track...');
+    });
+  });
+
+  // Attach 3-dots more options in mixes rows
+  container.querySelectorAll('.btn-song-more').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showAddToPlaylistModal(btn.dataset.videoId);
     });
   });
 
@@ -344,22 +432,75 @@ function renderSongCardSkeletons(count) {
 
 async function loadHomeData() {
   const trShelf = document.getElementById('trending-shelf');
+  const mixesList = document.getElementById('song-mixes-list');
+  const speedDialGrid = document.querySelector('.speed-dial-grid');
   if (!trShelf) return;
 
-  // Use seed tracks first for quick responsiveness
-  let tracks = [...SEED_TRACKS];
+  let tracks = getTracksForCurrentMood();
 
-  // If user has an active API key, try fetching live tracks
+  // If user has an active API key, fetch live tracks matching the selected mood
   if (Api.getApiKey()) {
     try {
-      const query = homeGenreFilter === 'Podcasts' ? 'top music podcast' : `${homeGenreFilter} songs hits`;
+      const query = homeGenreFilter === 'Podcasts' ? 'popular music podcast full episode' : `${homeGenreFilter} hits official music`;
       const fetched = await Api.search(query);
-      if (fetched && fetched.length > 0) {
+      if (fetched && fetched.length >= 6) {
         tracks = fetched;
+        MOOD_CATALOGS[homeGenreFilter] = fetched;
         Store.cacheTracks(tracks);
+
+        // Update mixes list with dynamic live tracks
+        if (mixesList) {
+          const dynamicMixes = tracks.slice(0, 4);
+          mixesList.innerHTML = dynamicMixes.map(t => `
+            <div class="list-row song-mix-row" data-video-id="${escapeHtml(t.videoId)}" style="display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,0.02);cursor:pointer;transition:background 0.2s ease;">
+              <img src="${escapeHtml(t.thumbnail)}" alt="${escapeHtml(decodeHtml(t.title))}" style="width:50px;height:50px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(decodeHtml(t.title))}</div>
+                <div style="font-size:13px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">
+                  <span class="verified-badge">✓</span>${escapeHtml(decodeHtml(t.artist))} · ${t.plays || formatDuration(t.duration)}
+                </div>
+              </div>
+              <button class="btn-song-more focus-ring hover-brighten" data-video-id="${escapeHtml(t.videoId)}" aria-label="Add to playlist" style="background:none;border:none;color:#aaa;cursor:pointer;padding:8px;font-size:18px;">⋮</button>
+            </div>
+          `).join('');
+
+          mixesList.querySelectorAll('.song-mix-row').forEach(row => {
+            row.addEventListener('click', (e) => {
+              if (e.target.closest('.btn-song-more')) return;
+              Player.play(row.dataset.videoId, dynamicMixes);
+              showToast('Playing track...');
+            });
+          });
+          mixesList.querySelectorAll('.btn-song-more').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              showAddToPlaylistModal(btn.dataset.videoId);
+            });
+          });
+        }
+
+        // Update speed dial with dynamic 6 tracks
+        if (speedDialGrid) {
+          const dynamicSpeedDial = tracks.slice(0, 6);
+          speedDialGrid.innerHTML = dynamicSpeedDial.map(t => `
+            <div class="speed-dial-card" data-video-id="${escapeHtml(t.videoId)}" style="position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);">
+              <img class="speed-dial-img" src="${escapeHtml(t.thumbnail)}" alt="${escapeHtml(decodeHtml(t.title))}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
+              <div class="speed-dial-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.85) 100%);display:flex;align-items:flex-end;padding:6px 8px;">
+                <span class="speed-dial-title" style="color:#ffffff;font-size:11px;font-weight:600;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(decodeHtml(t.title))}</span>
+              </div>
+            </div>
+          `).join('');
+
+          speedDialGrid.querySelectorAll('.speed-dial-card').forEach(card => {
+            card.addEventListener('click', () => {
+              Player.play(card.dataset.videoId, dynamicSpeedDial);
+              showToast('Playing track...');
+            });
+          });
+        }
       }
     } catch (err) {
-      console.warn('API fetch fell back to seeds:', err);
+      console.warn('API fetch fell back to curated mood catalog:', err);
     }
   }
 
@@ -997,6 +1138,37 @@ function showSettingsModal() {
     });
   }
 }
+
+// ── Android Hardware Back Button Dispatcher ──
+window.__handleAndroidBack = function() {
+  // 1. If playlist modal or settings modal is open, close it
+  const plModal = document.getElementById('playlist-modal-overlay');
+  if (plModal) {
+    plModal.remove();
+    return true;
+  }
+  const modalOverlays = document.querySelectorAll('.modal-overlay, .playlist-modal-sheet');
+  if (modalOverlays.length > 0) {
+    modalOverlays.forEach(m => m.remove());
+    return true;
+  }
+
+  // 2. If fullscreen player is open, collapse it down to mini-player without stopping audio
+  const fsPlayer = document.getElementById('fullscreen-player');
+  if (fsPlayer && fsPlayer.style.display !== 'none') {
+    fsPlayer.style.display = 'none';
+    return true;
+  }
+
+  // 3. If on Search or Library screen, navigate back to Home
+  if (currentRoute !== 'home') {
+    window.location.hash = '#home';
+    return true;
+  }
+
+  // 4. If already on Home, return false so Android minimizes the app (moveTaskToBack) while music continues!
+  return false;
+};
 
 // ── App Bootstrapper ──
 function bootstrap() {

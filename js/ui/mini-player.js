@@ -3,6 +3,7 @@ import { Store } from '../store.js';
 import { Player, onPlayerEvent } from '../player.js';
 import { Lyrics } from '../lyrics.js';
 import { showToast } from './toast.js';
+import { escapeHtml } from '../utils/sanitize.js';
 
 let miniEl = null;
 let fullscreenEl = null;
@@ -139,22 +140,15 @@ export function openFullscreen() {
   `;
 
   fullscreenEl.innerHTML = `
-    <!-- Top Bar with Safe-Area Inset (YouTube Music Header) -->
+    <!-- Top Bar with Safe-Area Inset (Clean Header, no dummy buttons) -->
     <div class="fs-top-bar" style="width:100%;max-width:500px;display:flex;align-items:center;justify-content:space-between;padding:max(14px,env(safe-area-inset-top)) 4px 10px 4px;z-index:10;flex-shrink:0;">
       <button class="fs-close focus-ring hover-brighten" aria-label="Collapse" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:50%;color:var(--color-text);cursor:pointer;padding:10px;display:flex;backdrop-filter:blur(10px);">${ICONS.chevronDown}</button>
       
-      <!-- Song / Video Toggle Switch -->
-      <div style="display:flex;background:rgba(255,255,255,0.08);border-radius:9999px;padding:3px;border:1px solid rgba(255,255,255,0.1);">
-        <button style="border:none;background:#ffffff;color:#030303;font-size:12px;font-weight:700;padding:4px 14px;border-radius:9999px;cursor:pointer;">Song</button>
-        <button style="border:none;background:transparent;color:#888;font-size:12px;font-weight:600;padding:4px 14px;border-radius:9999px;cursor:pointer;">Video</button>
+      <div style="font-size:13px;font-weight:600;color:var(--color-text-secondary);letter-spacing:0.04em;text-transform:uppercase;">
+        Now Playing
       </div>
 
-      <div style="display:flex;align-items:center;gap:6px;">
-        <button class="focus-ring hover-brighten" aria-label="Cast" style="background:none;border:none;color:#aaa;cursor:pointer;padding:8px;display:flex;">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6M2 20h.01"/></svg>
-        </button>
-        <button class="focus-ring hover-brighten" aria-label="More" style="background:none;border:none;color:#aaa;cursor:pointer;padding:8px;font-size:18px;">⋮</button>
-      </div>
+      <div style="width:36px;height:36px;"></div>
     </div>
     
     <!-- Ambient Art Wrap -->
@@ -271,21 +265,7 @@ export function openFullscreen() {
 
   fsAddPl.addEventListener('click', () => {
     const vid = Player.currentVideoId();
-    if (!vid) return;
-    const playlists = Store.getPlaylists();
-    if (playlists.length === 0) {
-      showToast('Create a playlist first in your Library', 'info');
-      return;
-    }
-    const name = prompt('Add to which playlist?\n' + playlists.map(p => '• ' + p.name).join('\n'));
-    if (!name) return;
-    const pl = playlists.find(p => p.name.toLowerCase() === name.toLowerCase());
-    if (pl) {
-      Store.addToPlaylist(pl.id, vid);
-      showToast(`Added to "${pl.name}"`);
-    } else {
-      showToast('Playlist not found', 'error');
-    }
+    if (vid) showAddToPlaylistModal(vid);
   });
 
   fsProgressWrap.addEventListener('mouseenter', () => { fsProgressThumb.style.opacity = '1'; });
@@ -496,4 +476,100 @@ export function openFullscreen() {
 
 export function closeFullscreen() {
   if (fullscreenEl) fullscreenEl.style.display = 'none';
+}
+
+export function showAddToPlaylistModal(videoId) {
+  const existing = document.getElementById('playlist-modal-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'playlist-modal-overlay';
+  overlay.className = 'playlist-modal-sheet';
+  overlay.style.cssText = `
+    position: fixed; inset: 0; z-index: var(--z-modal);
+    background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(14px);
+    display: flex; align-items: flex-end; justify-content: center;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  `;
+
+  function renderModalBody() {
+    const currentPls = Store.getPlaylists();
+    overlay.innerHTML = `
+      <div style="background: rgba(22, 22, 28, 0.98); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 24px; width: min(480px, 94vw); padding: 20px; box-shadow: 0 -12px 40px rgba(0,0,0,0.8);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="font-size: 18px; font-weight: 700; color: #fff; margin: 0;">Add to Playlist</h3>
+          <button id="close-pl-modal" class="focus-ring" style="background: rgba(255,255,255,0.08); border: none; border-radius: 50%; color: #aaa; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 16px;">✕</button>
+        </div>
+
+        <!-- Create New Playlist Row -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <input type="text" id="new-pl-name-input" placeholder="New playlist name..." style="flex: 1; padding: 10px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; color: #fff; font-size: 14px; outline: none;">
+          <button id="create-pl-btn" style="padding: 10px 16px; background: var(--color-accent); border: none; border-radius: 12px; color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;">+ Create</button>
+        </div>
+
+        <!-- Playlist List -->
+        <div style="max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          ${currentPls.length === 0 ? `
+            <div style="text-align: center; color: #888; padding: 24px 0; font-size: 14px;">No playlists yet. Type a name above to create one!</div>
+          ` : currentPls.map(pl => {
+            const inPl = (pl.tracks || []).includes(videoId);
+            return `
+              <div class="pl-item-row focus-ring" data-pl-id="${pl.id}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: ${inPl ? 'rgba(52, 120, 198, 0.15)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${inPl ? 'rgba(110, 158, 255, 0.3)' : 'rgba(255,255,255,0.06)'}; border-radius: 14px; cursor: pointer; transition: background 0.2s ease;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 16px;">🎵</div>
+                  <div>
+                    <div style="font-weight: 600; font-size: 15px; color: #fff;">${escapeHtml(pl.name)}</div>
+                    <div style="font-size: 12px; color: #888; margin-top: 2px;">${(pl.tracks || []).length} songs</div>
+                  </div>
+                </div>
+                <div style="font-size: 13px; font-weight: 600; color: ${inPl ? '#6e9eff' : '#aaa'}; display: flex; align-items: center; gap: 4px;">
+                  ${inPl ? '✓ In Playlist' : '+ Add'}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    overlay.querySelector('#close-pl-modal').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    const createBtn = overlay.querySelector('#create-pl-btn');
+    const nameInput = overlay.querySelector('#new-pl-name-input');
+    const doCreate = () => {
+      const name = nameInput.value.trim();
+      if (!name) return;
+      const newPl = Store.createPlaylist(name);
+      Store.addToPlaylist(newPl.id, videoId);
+      showToast(`Created & added to "${name}"`);
+      renderModalBody();
+    };
+    createBtn.addEventListener('click', doCreate);
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doCreate();
+    });
+
+    overlay.querySelectorAll('.pl-item-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const plId = row.dataset.plId;
+        const pl = currentPls.find(p => p.id === plId);
+        if (!pl) return;
+        const inPl = (pl.tracks || []).includes(videoId);
+        if (inPl) {
+          Store.removeFromPlaylist(plId, videoId);
+          showToast(`Removed from "${pl.name}"`);
+        } else {
+          Store.addToPlaylist(plId, videoId);
+          showToast(`Added to "${pl.name}"`);
+        }
+        renderModalBody();
+      });
+    });
+  }
+
+  renderModalBody();
+  document.body.appendChild(overlay);
 }
