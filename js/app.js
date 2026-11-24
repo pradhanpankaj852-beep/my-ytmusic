@@ -572,7 +572,6 @@ function renderSearchResults(results, query, container) {
     });
   });
 }
-}
 
 // ── S03 Library Screen ──
 function renderLibraryScreen() {
