@@ -1,3 +1,34 @@
+# Node & npm
+node_modules/
+package-lock.json
+
+# Private keys, environment & sensitive configs
+.env
+.env.*
+*api_key*
+*secret*
+local.properties
+*.keystore
+*.jks
+
+# Android build outputs & Gradle caches
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+android/.idea/
+android/*.iml
+
+# Capacitor & bundles
+www/
+dist/
+*.apk
+*.aab
+
+# Internal & IDE files
+.claude/
+replica-skill/
+.vscode/
 .DS_Store
 Thumbs.db
 *.log

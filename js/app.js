@@ -9,30 +9,58 @@ import { escapeHtml, maskApiKey } from './utils/sanitize.js';
 // Seed tracks for instant playback & offline demo resilience
 const SEED_TRACKS = [
   {
+    videoId: 'gset79KMmt0',
+    title: 'Snowman',
+    artist: 'Sia',
+    plays: '113 crore plays',
+    thumbnail: 'https://i.ytimg.com/vi/gset79KMmt0/mqdefault.jpg',
+    duration: 165
+  },
+  {
+    videoId: 'hT_nvWreIhg',
+    title: 'Counting Stars',
+    artist: 'OneRepublic',
+    plays: '576 crore plays',
+    thumbnail: 'https://i.ytimg.com/vi/hT_nvWreIhg/mqdefault.jpg',
+    duration: 257
+  },
+  {
+    videoId: 'S9bCLPwzSC0',
+    title: 'Mockingbird',
+    artist: 'Eminem',
+    plays: '890 crore plays',
+    thumbnail: 'https://i.ytimg.com/vi/S9bCLPwzSC0/mqdefault.jpg',
+    duration: 251
+  },
+  {
+    videoId: '4NRXx6U8ABQ',
+    title: 'Blinding Lights',
+    artist: 'The Weeknd',
+    plays: '420 crore plays',
+    thumbnail: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/mqdefault.jpg',
+    duration: 200
+  },
+  {
     videoId: 'jfKfPfyJRdk',
     title: 'Lofi Hip Hop Radio - Beats to Relax/Study to',
     artist: 'Lofi Girl',
+    plays: 'Live 24/7',
     thumbnail: 'https://i.ytimg.com/vi/jfKfPfyJRdk/mqdefault.jpg',
     duration: 3600
   },
   {
-    videoId: '5qap5aO4i9A',
-    title: 'Lofi Hip Hop Radio - Beats to Sleep/Chill to',
-    artist: 'Lofi Girl',
-    thumbnail: 'https://i.ytimg.com/vi/5qap5aO4i9A/mqdefault.jpg',
-    duration: 3600
-  },
-  {
-    videoId: 'DWcJFNfaw9c',
-    title: 'Chillhop Radio - Jazzy & Lofi Hip Hop Beats',
-    artist: 'Chillhop Music',
-    thumbnail: 'https://i.ytimg.com/vi/DWcJFNfaw9c/mqdefault.jpg',
-    duration: 3600
+    videoId: '34Na4j8AVgA',
+    title: 'Starboy',
+    artist: 'The Weeknd ft. Daft Punk',
+    plays: '280 crore plays',
+    thumbnail: 'https://i.ytimg.com/vi/34Na4j8AVgA/mqdefault.jpg',
+    duration: 230
   },
   {
     videoId: '7NOSDKb0HlU',
     title: 'Synthwave Radio - Chill Synth / Retro Beats',
     artist: 'Lofi Girl',
+    plays: 'Chill Beats',
     thumbnail: 'https://i.ytimg.com/vi/7NOSDKb0HlU/mqdefault.jpg',
     duration: 3600
   },
@@ -40,15 +68,9 @@ const SEED_TRACKS = [
     videoId: 'k3Vduy9t4mU',
     title: 'Acoustic Guitar Melodies - Peaceful Campfire',
     artist: 'Cozy Rain',
+    plays: 'Acoustic Session',
     thumbnail: 'https://i.ytimg.com/vi/k3Vduy9t4mU/mqdefault.jpg',
     duration: 1800
-  },
-  {
-    videoId: '4xDzrJKXOOY',
-    title: 'Synthwave Radio - Chill Synth',
-    artist: 'Nightride FM',
-    thumbnail: 'https://i.ytimg.com/vi/4xDzrJKXOOY/mqdefault.jpg',
-    duration: 3600
   }
 ];
 
@@ -201,48 +223,109 @@ function initKeyboardShortcuts() {
   });
 }
 
-// ── S01 Home Screen ──
-const GENRES = ['All', 'Chill', 'Relax', 'Workout', 'Energy', 'Focus', 'Lofi', 'Acoustic'];
+// ── S01 Home Screen (YouTube Music Inspired) ──
+const GENRES = ['Podcasts', 'Romance', 'Feel good', 'Relax', 'Party', 'Energy', 'Workout', 'Focus'];
 
 function renderHomeScreen() {
   const container = document.getElementById('screen-home');
   if (!container) return;
 
+  const mixesTracks = SEED_TRACKS.slice(0, 4);
+  const speedDialTracks = SEED_TRACKS.slice(0, 6);
+
   container.innerHTML = `
-    <!-- Genre Chips -->
-    <div class="chips-container" role="tablist" aria-label="Music genres">
+    <!-- Mood / Genre Filter Chips -->
+    <div class="chips-container" role="tablist" aria-label="Music genres" style="margin-bottom:20px;overflow-x:auto;display:flex;gap:8px;padding-bottom:4px;-webkit-overflow-scrolling:touch;">
       ${GENRES.map(g => `
-        <button class="chip ${g === homeGenreFilter ? 'active' : ''}" data-genre="${g}" role="tab" aria-selected="${g === homeGenreFilter}">${g}</button>
+        <button class="chip ${g === homeGenreFilter ? 'active' : ''}" data-genre="${g}" role="tab" aria-selected="${g === homeGenreFilter}" style="${g === homeGenreFilter ? 'background:#fff;color:#000;font-weight:600;' : 'background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.08);'}">
+          ${g}
+        </button>
       `).join('')}
     </div>
 
-    <!-- Quick Picks Shelf -->
-    <section class="shelf-section">
-      <div class="shelf-header">
-        <h2 class="shelf-title">Quick Picks</h2>
+    <!-- Section 1: Song mixes (YouTube Music Mobile Style) -->
+    <section class="shelf-section" style="margin-bottom:28px;">
+      <div class="shelf-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h2 class="shelf-title" style="font-size:20px;font-weight:700;color:#fff;">Song mixes</h2>
+        <button class="chip" id="btn-play-all-mixes" style="padding:6px 14px;font-size:12px;background:rgba(255,255,255,0.1);color:#fff;border-radius:9999px;border:1px solid rgba(255,255,255,0.12);cursor:pointer;">Play all</button>
       </div>
-      <div class="carousel-grid" id="quick-picks-shelf">
-        ${renderSongCardSkeletons(4)}
+      <div class="mixes-list" id="song-mixes-list" style="display:flex;flex-direction:column;gap:8px;">
+        ${mixesTracks.map(t => `
+          <div class="list-row song-mix-row" data-video-id="${escapeHtml(t.videoId)}" style="display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,0.02);cursor:pointer;transition:background 0.2s ease;">
+            <img src="${escapeHtml(t.thumbnail)}" alt="${escapeHtml(t.title)}" style="width:50px;height:50px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:15px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(t.title)}</div>
+              <div style="font-size:13px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">
+                <span class="verified-badge">✓</span>${escapeHtml(t.artist)} · ${t.plays || formatDuration(t.duration)}
+              </div>
+            </div>
+            <button class="focus-ring hover-brighten" aria-label="More options" style="background:none;border:none;color:#aaa;cursor:pointer;padding:8px;font-size:18px;">⋮</button>
+          </div>
+        `).join('')}
       </div>
     </section>
 
-    <!-- Trending Now Shelf -->
+    <!-- Section 2: Speed dial (YouTube Music 3-column Grid) -->
+    <section class="shelf-section" style="margin-bottom:28px;">
+      <div class="shelf-header" style="margin-bottom:12px;">
+        <h2 class="shelf-title" style="font-size:20px;font-weight:700;color:#fff;">Speed dial</h2>
+      </div>
+      <div class="speed-dial-grid">
+        ${speedDialTracks.map(t => `
+          <div class="speed-dial-card" data-video-id="${escapeHtml(t.videoId)}">
+            <img class="speed-dial-img" src="${escapeHtml(t.thumbnail)}" alt="${escapeHtml(t.title)}" loading="lazy">
+            <div class="speed-dial-overlay">
+              <span class="speed-dial-title">${escapeHtml(t.title)}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+
+    <!-- Section 3: Trending & Recommended (Carousel Shelf) -->
     <section class="shelf-section">
-      <div class="shelf-header">
-        <h2 class="shelf-title">Trending & Recommended</h2>
+      <div class="shelf-header" style="margin-bottom:12px;">
+        <h2 class="shelf-title" style="font-size:20px;font-weight:700;color:#fff;">Trending & Recommended</h2>
       </div>
       <div class="carousel-grid" id="trending-shelf">
-        ${renderSongCardSkeletons(6)}
+        ${renderSongCardSkeletons(4)}
       </div>
     </section>
   `;
 
   // Attach chip events
-  container.querySelectorAll('.chip').forEach(btn => {
+  container.querySelectorAll('.chip[data-genre]').forEach(btn => {
     btn.addEventListener('click', () => {
       homeGenreFilter = btn.dataset.genre;
       renderHomeScreen();
       loadHomeData();
+    });
+  });
+
+  // Attach play all button
+  const playAllBtn = container.querySelector('#btn-play-all-mixes');
+  if (playAllBtn) {
+    playAllBtn.addEventListener('click', () => {
+      Player.play(mixesTracks[0].videoId, mixesTracks);
+      showToast('Playing Song Mixes...');
+    });
+  }
+
+  // Attach mix row click events
+  container.querySelectorAll('.song-mix-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const vid = row.dataset.videoId;
+      Player.play(vid, mixesTracks);
+      showToast('Playing track...');
+    });
+  });
+
+  // Attach speed dial click events
+  container.querySelectorAll('.speed-dial-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const vid = card.dataset.videoId;
+      Player.play(vid, speedDialTracks);
+      showToast('Playing track...');
     });
   });
 
@@ -260,34 +343,30 @@ function renderSongCardSkeletons(count) {
 }
 
 async function loadHomeData() {
-  const qpShelf = document.getElementById('quick-picks-shelf');
   const trShelf = document.getElementById('trending-shelf');
-  if (!qpShelf || !trShelf) return;
+  if (!trShelf) return;
 
   // Use seed tracks first for quick responsiveness
   let tracks = [...SEED_TRACKS];
 
-  // Try fetching dynamic trending or genre query
-  try {
-    const query = homeGenreFilter === 'All' ? 'chill lofi beats' : `${homeGenreFilter} music`;
-    const fetched = await Api.search(query);
-    if (fetched && fetched.length > 0) {
-      tracks = fetched;
-      Store.cacheTracks(tracks);
+  // If user has an active API key, try fetching live tracks
+  if (Api.getApiKey()) {
+    try {
+      const query = homeGenreFilter === 'Podcasts' ? 'top music podcast' : `${homeGenreFilter} songs hits`;
+      const fetched = await Api.search(query);
+      if (fetched && fetched.length > 0) {
+        tracks = fetched;
+        Store.cacheTracks(tracks);
+      }
+    } catch (err) {
+      console.warn('API fetch fell back to seeds:', err);
     }
-  } catch (err) {
-    console.warn('API fetch fell back to seeds:', err);
   }
 
-  // Populate Quick Picks Shelf (first 4)
-  const quickPicks = tracks.slice(0, 4);
-  qpShelf.innerHTML = quickPicks.map(t => renderSongCard(t)).join('');
-  attachSongCardEvents(qpShelf, quickPicks);
-
   // Populate Trending Shelf
-  const trending = tracks.slice(4);
-  trShelf.innerHTML = (trending.length ? trending : quickPicks).map(t => renderSongCard(t)).join('');
-  attachSongCardEvents(trShelf, trending.length ? trending : quickPicks);
+  const trending = tracks.slice(2);
+  trShelf.innerHTML = (trending.length ? trending : tracks).map(t => renderSongCard(t)).join('');
+  attachSongCardEvents(trShelf, trending.length ? trending : tracks);
 }
 
 function renderSongCard(track) {
@@ -483,7 +562,38 @@ async function executeSearch(query) {
     renderSearchResults(results, trimmed, resultsContainer);
   } catch (err) {
     const isQuota = (err.message || '').toLowerCase().includes('quota');
-    if (isQuota) {
+    const isKeyRequired = (err.message || '').includes('API_KEY_REQUIRED');
+
+    if (isKeyRequired) {
+      resultsContainer.innerHTML = `
+        <div style="text-align:center;padding:32px 16px;max-width:480px;margin:20px auto;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:24px;">
+          <div style="font-size:2.5rem;margin-bottom:12px;">🔑</div>
+          <div style="font-size:var(--text-lg);font-weight:700;color:var(--color-text);margin-bottom:8px;">Add Your YouTube API Key</div>
+          <div style="color:var(--color-text-secondary);font-size:var(--text-sm);line-height:1.6;margin-bottom:20px;">
+            To search millions of songs and artists, enter your free Google Cloud API key below:
+          </div>
+          <div style="display:flex;gap:8px;max-width:380px;margin:0 auto 12px auto;">
+            <input type="password" id="quota-key-input" class="search-input" placeholder="Paste your AIzaSy... key" style="padding:10px 14px;font-size:var(--text-sm);">
+            <button id="quota-key-save-btn" class="search-submit-btn" style="padding:10px 18px;font-size:var(--text-sm);">Save</button>
+          </div>
+          <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:10px;">
+            🔒 Stored 100% locally on your phone. Never shared or uploaded to GitHub.
+          </div>
+        </div>
+      `;
+      const qInput = document.getElementById('quota-key-input');
+      const qBtn = document.getElementById('quota-key-save-btn');
+      if (qBtn && qInput) {
+        qBtn.addEventListener('click', () => {
+          const val = qInput.value.trim();
+          if (val) {
+            Api.setApiKey(val);
+            showToast('YouTube API Key saved!');
+            executeSearch(trimmed);
+          }
+        });
+      }
+    } else if (isQuota) {
       resultsContainer.innerHTML = `
         <div style="text-align:center;padding:32px 16px;max-width:480px;margin:20px auto;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:24px;">
           <div style="font-size:2.5rem;margin-bottom:12px;">⏳</div>
@@ -494,7 +604,7 @@ async function executeSearch(query) {
             To continue searching immediately, paste a fresh free Google API key below:
           </div>
           <div style="display:flex;gap:8px;max-width:380px;margin:0 auto 12px auto;">
-            <input type="text" id="quota-key-input" class="search-input" placeholder="Paste AIzaSy... key" style="padding:10px 14px;font-size:var(--text-sm);">
+            <input type="password" id="quota-key-input" class="search-input" placeholder="Paste new AIzaSy... key" style="padding:10px 14px;font-size:var(--text-sm);">
             <button id="quota-key-save-btn" class="search-submit-btn" style="padding:10px 18px;font-size:var(--text-sm);">Save</button>
           </div>
           <div style="font-size:var(--text-xs);color:var(--color-text-muted);">
@@ -899,6 +1009,16 @@ function bootstrap() {
   const settingsBtn = document.getElementById('btn-settings');
   if (settingsBtn) {
     settingsBtn.addEventListener('click', showSettingsModal);
+  }
+
+  const avatarBtn = document.getElementById('btn-avatar');
+  if (avatarBtn) {
+    avatarBtn.addEventListener('click', showSettingsModal);
+  }
+
+  const notifBtn = document.getElementById('btn-notifications');
+  if (notifBtn) {
+    notifBtn.addEventListener('click', () => showToast('No new notifications'));
   }
 }
 

@@ -48,7 +48,6 @@ function mapYTItem(item, details) {
 }
 
 const API_KEY_STORAGE = 'ytm_api_key';
-const _k = atob('QUl6YVN5Q1J0NVZuY01fNDItRG8xUGhiaWhOVVFrWGhrblNxLU1R');
 
 export const Api = {
   getApiKey() {
@@ -56,7 +55,7 @@ export const Api = {
     if (saved && saved.trim() && saved.trim().startsWith('AIzaSy')) {
       return saved.trim();
     }
-    return _k;
+    return '';
   },
   setApiKey(key) {
     if (key && key.trim()) {
@@ -98,7 +97,9 @@ export const Api = {
 
   async searchYT(query) {
     const key = this.getApiKey();
-    if (!key) return this.searchPiped(query);
+    if (!key) {
+      throw new Error('API_KEY_REQUIRED');
+    }
     try {
       const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=20&q=${encodeURIComponent(query)}&key=${key}`;
       const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
@@ -151,7 +152,7 @@ export const Api = {
 
   async trendingYT(region = 'US') {
     const key = this.getApiKey();
-    if (!key) return this.trendingPiped(region);
+    if (!key) return [];
     try {
       const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&chart=mostPopular&videoCategoryId=10&maxResults=30&regionCode=${region}&key=${key}`;
       const res = await fetch(url);
@@ -159,7 +160,7 @@ export const Api = {
       const data = await res.json();
       return data.items.map(i => mapYTItem(i, i));
     } catch {
-      return this.trendingPiped(region);
+      return [];
     }
   },
 
