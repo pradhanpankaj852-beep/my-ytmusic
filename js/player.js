@@ -35,6 +35,12 @@ let bgCarrierOsc = null;
 
 export function unlockBackgroundAudio() {
   try {
+    // Keep hardware audio session open via HTML5 audio anchor
+    const anchor = document.getElementById('bg-audio-anchor');
+    if (anchor && anchor.paused) {
+      anchor.play().catch(() => {});
+    }
+
     // Tell iOS Safari this web app has the same audio session priority as Spotify / Apple Podcasts
     if (navigator.audioSession) {
       navigator.audioSession.type = 'playback';
@@ -239,6 +245,10 @@ export const Player = {
 
   pause() {
     userRequestedPause = true;
+    const anchor = document.getElementById('bg-audio-anchor');
+    if (anchor) {
+      try { anchor.pause(); } catch (e) {}
+    }
     if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
   },
 

@@ -113,8 +113,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 0 18px 0;
-  margin-bottom: 4px;
+  padding: max(14px, env(safe-area-inset-top)) 0 12px 0;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(5, 5, 7, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 
 .header-brand {
@@ -271,32 +276,31 @@ body {
   min-height: 100vh;
 }
 
-/* Mobile Nav Bottom Bar — Floating Pill */
+/* Mobile Nav Bottom Bar — Full-width Docked Bar (YouTube Music Style) */
 .mobile-nav {
   display: none;
   position: fixed;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 32px);
-  max-width: 400px;
-  height: 58px;
-  background: rgba(20, 20, 24, 0.85);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: calc(58px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(10, 10, 14, 0.96);
   backdrop-filter: blur(28px) saturate(200%);
   -webkit-backdrop-filter: blur(28px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-full);
-  z-index: calc(var(--z-mini-player) - 10);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 150;
   justify-content: space-around;
   align-items: center;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.6);
 }
 
 .mobile-nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   color: var(--color-text-secondary);
   text-decoration: none;
   font-size: var(--text-xs);
@@ -307,13 +311,13 @@ body {
 }
 
 .mobile-nav-item.active {
-  color: #6e9eff;
-  background: rgba(110, 158, 255, 0.15);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .mobile-nav-item svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 /* Responsive adjustments for Mobile (iOS & Android) */
@@ -323,27 +327,30 @@ body {
   }
   .main-content {
     margin-left: 0;
-    padding: var(--space-4);
-    padding-bottom: 160px !important;
+    padding: var(--space-3) var(--space-4);
+    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
   }
   .mobile-nav {
     display: flex;
-    bottom: max(10px, env(safe-area-inset-bottom));
   }
   .mini-player-inner {
-    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
-    width: calc(100% - 20px) !important;
-    height: 60px !important;
+    bottom: calc(58px + env(safe-area-inset-bottom) + 8px) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100% - 16px) !important;
+    transform: none !important;
+    height: 58px !important;
     padding: 0 12px !important;
-    border-radius: 18px !important;
+    border-radius: 14px !important;
+    background: rgba(26, 26, 32, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7) !important;
   }
   .mp-prev {
     display: none !important;
   }
   #fullscreen-player {
-    padding: 16px 16px 28px 16px !important;
-    justify-content: flex-start !important;
-    padding-top: max(20px, env(safe-area-inset-top)) !important;
+    padding: 0 16px max(16px, env(safe-area-inset-bottom)) 16px !important;
   }
   #fullscreen-player .fs-art {
     width: min(220px, 58vw) !important;

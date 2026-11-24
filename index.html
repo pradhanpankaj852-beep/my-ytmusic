@@ -16,9 +16,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Continuous Background Audio Host & Player -->
-  <div id="yt-player-host" style="position:fixed;bottom:0;right:0;width:240px;height:240px;transform:scale(0.01);transform-origin:bottom right;pointer-events:none;z-index:-9999;"></div>
-  <audio id="bg-audio-anchor" loop playsinline webkit-playsinline style="position:fixed;bottom:-100px;left:-100px;width:1px;height:1px;opacity:0.01;pointer-events:none;"></audio>
+  <!-- Continuous Background Audio Host & Player (Invisible but active to avoid Chromium occlusion suspension) -->
+  <div id="yt-player-host" style="position:fixed;bottom:0;right:0;width:200px;height:200px;opacity:0.001;pointer-events:none;z-index:-1;"></div>
+  <audio id="bg-audio-anchor" loop playsinline webkit-playsinline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" style="position:fixed;bottom:-50px;left:-50px;width:1px;height:1px;opacity:0.01;pointer-events:none;"></audio>
 
   <div class="app-layout">
     <!-- Desktop Side Rail / Navigation -->

@@ -132,27 +132,48 @@ export function openFullscreen() {
   fullscreenEl.id = 'fullscreen-player';
   fullscreenEl.style.cssText = `
     position:fixed;inset:0;z-index:var(--z-fullscreen);display:flex;flex-direction:column;
-    align-items:center;justify-content:center;padding:24px;
-    background:radial-gradient(circle at 50% 20%, rgba(52,120,198,0.22), #030303 70%);
-    overflow-y:auto;backdrop-filter:blur(30px);
+    align-items:center;justify-content:space-between;
+    padding:0 16px max(16px, env(safe-area-inset-bottom)) 16px;
+    background:linear-gradient(180deg, #141b27 0%, #090c12 40%, #030303 100%);
+    overflow-y:auto;overflow-x:hidden;backdrop-filter:blur(36px);
   `;
 
   fullscreenEl.innerHTML = `
-    <!-- Top Bar Controls -->
-    <button class="fs-close focus-ring hover-brighten" aria-label="Close" style="position:absolute;top:20px;right:24px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:50%;color:var(--color-text);cursor:pointer;padding:10px;display:flex;backdrop-filter:blur(10px);">${ICONS.chevronDown}</button>
+    <!-- Top Bar with Safe-Area Inset (YouTube Music Header) -->
+    <div class="fs-top-bar" style="width:100%;max-width:500px;display:flex;align-items:center;justify-content:space-between;padding:max(14px,env(safe-area-inset-top)) 4px 10px 4px;z-index:10;flex-shrink:0;">
+      <button class="fs-close focus-ring hover-brighten" aria-label="Collapse" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:50%;color:var(--color-text);cursor:pointer;padding:10px;display:flex;backdrop-filter:blur(10px);">${ICONS.chevronDown}</button>
+      
+      <!-- Song / Video Toggle Switch -->
+      <div style="display:flex;background:rgba(255,255,255,0.08);border-radius:9999px;padding:3px;border:1px solid rgba(255,255,255,0.1);">
+        <button style="border:none;background:#ffffff;color:#030303;font-size:12px;font-weight:700;padding:4px 14px;border-radius:9999px;cursor:pointer;">Song</button>
+        <button style="border:none;background:transparent;color:#888;font-size:12px;font-weight:600;padding:4px 14px;border-radius:9999px;cursor:pointer;">Video</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="focus-ring hover-brighten" aria-label="Cast" style="background:none;border:none;color:#aaa;cursor:pointer;padding:8px;display:flex;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6M2 20h.01"/></svg>
+        </button>
+        <button class="focus-ring hover-brighten" aria-label="More" style="background:none;border:none;color:#aaa;cursor:pointer;padding:8px;font-size:18px;">⋮</button>
+      </div>
+    </div>
     
     <!-- Ambient Art Wrap -->
-    <div style="position:relative;margin-bottom:24px;display:flex;justify-content:center;">
+    <div style="position:relative;margin:4px 0 14px 0;display:flex;justify-content:center;flex-shrink:0;">
       <div id="fs-art-glow" style="position:absolute;inset:-10px;filter:blur(36px);opacity:0.6;border-radius:var(--radius-xl);background:var(--color-accent);z-index:0;transition:all 1s ease;"></div>
-      <img class="fs-art" src="" alt="" style="position:relative;z-index:1;width:min(320px,68vw);height:min(320px,68vw);border-radius:24px;object-fit:cover;box-shadow:0 20px 50px rgba(0,0,0,0.8);border:1px solid rgba(255,255,255,0.12);">
+      <img class="fs-art" src="" alt="" style="position:relative;z-index:1;width:min(280px,64vw);height:min(280px,64vw);border-radius:20px;object-fit:cover;box-shadow:0 16px 40px rgba(0,0,0,0.8);border:1px solid rgba(255,255,255,0.12);">
     </div>
 
-    <!-- Title and Artist -->
-    <div class="fs-title" style="color:var(--color-text);font-size:var(--text-xl);font-weight:700;text-align:center;max-width:440px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;letter-spacing:-0.02em;"></div>
-    <div class="fs-artist" style="color:var(--color-text-secondary);font-size:var(--text-base);text-align:center;margin-bottom:20px;font-weight:500;"></div>
+    <!-- Title and Artist Row -->
+    <div style="width:min(440px,90vw);display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
+      <div style="flex:1;min-width:0;text-align:left;padding-right:12px;">
+        <div class="fs-title" style="color:var(--color-text);font-size:1.25rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.02em;"></div>
+        <div class="fs-artist" style="color:var(--color-text-secondary);font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;font-weight:500;"></div>
+      </div>
+      <button class="fs-like focus-ring hover-brighten" aria-label="Like" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;padding:8px;display:flex;flex-shrink:0;">${ICONS.heart}</button>
+    </div>
 
     <!-- Progress Bar -->
-    <div class="fs-progress-container" style="width:min(440px,90vw);margin-bottom:12px;">
+    <div class="fs-progress-container" style="width:min(440px,90vw);margin-bottom:12px;flex-shrink:0;">
       <div class="fs-progress-wrap" style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:var(--radius-full);cursor:pointer;position:relative;">
         <div class="fs-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--color-accent),#6e9eff);width:0%;border-radius:var(--radius-full);transition:width 0.5s linear;box-shadow:0 0 10px rgba(110,158,255,0.5);"></div>
         <div class="fs-progress-thumb" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#ffffff;opacity:0;transition:opacity var(--duration-fast) var(--ease-out);left:0;box-shadow:0 2px 6px rgba(0,0,0,0.5);"></div>
@@ -164,7 +185,7 @@ export function openFullscreen() {
     </div>
 
     <!-- Transport Buttons -->
-    <div class="fs-controls" style="display:flex;align-items:center;gap:24px;margin-bottom:20px;">
+    <div class="fs-controls" style="display:flex;align-items:center;gap:24px;margin-bottom:14px;flex-shrink:0;">
       <button class="fs-shuffle focus-ring hover-brighten" aria-label="Shuffle" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;padding:8px;display:flex;">${ICONS.shuffle}</button>
       <button class="fs-prev focus-ring hover-brighten" aria-label="Previous" style="background:none;border:none;color:var(--color-text);cursor:pointer;padding:8px;display:flex;">${ICONS.skipPrev}</button>
       <button class="fs-play focus-ring" aria-label="Play" style="background:#ffffff;border:none;color:#030303;cursor:pointer;padding:12px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;width:56px;height:56px;transition:transform var(--duration-fast) var(--ease-spring);box-shadow:0 8px 24px rgba(255,255,255,0.3);">${ICONS.play}</button>
@@ -173,8 +194,7 @@ export function openFullscreen() {
     </div>
 
     <!-- Secondary Utilities -->
-    <div class="fs-secondary" style="display:flex;align-items:center;gap:18px;margin-bottom:18px;">
-      <button class="fs-like focus-ring hover-brighten" aria-label="Like" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;padding:8px;display:flex;">${ICONS.heart}</button>
+    <div class="fs-secondary" style="display:flex;align-items:center;gap:18px;margin-bottom:14px;flex-shrink:0;">
       <button class="fs-add-playlist focus-ring hover-brighten" aria-label="Add to playlist" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;padding:8px;display:flex;">${ICONS.addToPlaylist}</button>
       <div class="fs-volume-wrap" style="display:flex;align-items:center;gap:8px;">
         <button class="fs-vol-btn focus-ring hover-brighten" aria-label="Mute" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;padding:4px;display:flex;">${ICONS.volume}</button>
@@ -183,15 +203,15 @@ export function openFullscreen() {
     </div>
 
     <!-- Pill Tabs -->
-    <div class="fs-tabs" style="display:flex;gap:8px;background:rgba(255,255,255,0.06);padding:4px;border-radius:var(--radius-full);width:min(460px,90vw);margin-bottom:14px;border:1px solid rgba(255,255,255,0.08);">
+    <div class="fs-tabs" style="display:flex;gap:8px;background:rgba(255,255,255,0.06);padding:4px;border-radius:var(--radius-full);width:min(460px,90vw);margin-bottom:10px;border:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
       <button class="fs-tab focus-ring" data-tab="queue" style="flex:1;padding:8px;background:var(--color-accent);border:none;border-radius:var(--radius-full);color:#fff;font-size:var(--text-base);font-weight:600;cursor:pointer;transition:all 0.2s ease;">Queue</button>
       <button class="fs-tab focus-ring" data-tab="lyrics" style="flex:1;padding:8px;background:transparent;border:none;border-radius:var(--radius-full);color:var(--color-text-secondary);font-size:var(--text-base);font-weight:600;cursor:pointer;transition:all 0.2s ease;">✨ Live Lyrics</button>
     </div>
 
-    <!-- Tab Panels Container -->
-    <div class="fs-panel" style="width:min(460px,90vw);max-height:280px;overflow-y:auto;scroll-behavior:smooth;border-radius:18px;">
+    <!-- Tab Panels Container (Flex-1 fills remaining space cleanly to avoid black void) -->
+    <div class="fs-panel" style="width:min(460px,94vw);flex:1;min-height:180px;max-height:360px;overflow-y:auto;scroll-behavior:smooth;border-radius:18px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);padding:8px;margin-bottom:4px;">
       <div class="fs-queue-panel"></div>
-      <div class="fs-lyrics-panel" style="display:none;padding:12px 6px;"></div>
+      <div class="fs-lyrics-panel" style="display:none;padding:12px 6px;min-height:100%;"></div>
     </div>
   `;
 
